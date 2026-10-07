@@ -1,3 +1,4 @@
+using System.Collections;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -15,8 +16,9 @@ public class Player : MonoBehaviour
     [SerializeField] private string _groundTag = "Ground";
 
     private Vector2 _dir;
+    private Vector3 _normalOfWall;
     private float _yaw, _pitch;
-    private bool _isGrounded;
+    private bool _isGrounded, _wallRun, _wallRight;
     private Rigidbody _rb;
 
     private void Start()
@@ -47,20 +49,101 @@ public class Player : MonoBehaviour
         }
     }
 
+    private void Update()
+    {
+        //WallRun
+        RaycastHit hit;
+        if (Physics.Raycast(transform.position, transform.right, out hit, 1f))
+        {
+            if (!_isGrounded)
+            {
+                _normalOfWall = hit.normal;
+                _wallRight = true;
+                if (_rb.linearVelocity.sqrMagnitude > 1f) _wallRun = true;
+                return;
+            }
+        }
+
+        if (Physics.Raycast(transform.position, -transform.right, out hit, 1f))
+        {
+            if (!_isGrounded)
+            {
+                _normalOfWall = hit.normal;
+                _wallRight = false;
+
+                if (_rb.linearVelocity.sqrMagnitude > 1f) _wallRun = true;
+            }
+        }
+    }
+
     private void OnCollisionStay(Collision collision)
     {
         if (collision.gameObject.CompareTag(_groundTag))
         {
             _isGrounded = true;
         }
+
+        if (collision.gameObject.CompareTag("Wall") && _wallRun)
+            _rb.AddForce(-_normalOfWall * 25);
+    }
+
+    private void OnCollisionEnter(Collision collision)
+    {
+        if(collision.gameObject.CompareTag("Wall") && _wallRun)
+        {
+            _rb.useGravity = false;
+
+            if (_wallRight)
+            {
+                float i = 0f;
+                Quaternion a = transform.rotation;
+
+                StartCoroutine(SmoothRotateToZ(15f));
+            }
+            else
+            {
+                float i = 0f;
+                Quaternion a = transform.rotation;
+
+                StartCoroutine(SmoothRotateToZ(-15f));
+            }
+        }
     }
 
     private void OnCollisionExit(Collision collision)
     {
-        if (collision.gameObject.CompareTag(_groundTag))
+        if (collision.gameObject.CompareTag("Wall") && _wallRun)
         {
-            _isGrounded = false;
+            _rb.useGravity = true;
+            _wallRun = false;
+
+            StartCoroutine(SmoothRotateToZ(0f));
         }
+
+        if (collision.gameObject.CompareTag(_groundTag)) _isGrounded = false;
+    }
+
+    private IEnumerator SmoothRotateToZ(float z)
+    {
+        float i = 0f;
+
+        Quaternion targetRotation = Quaternion.Euler(
+            transform.rotation.eulerAngles.x,
+            transform.rotation.eulerAngles.y,
+            z
+        );
+
+        Quaternion a = transform.rotation;
+
+        while (i < 1f)
+        {
+            transform.rotation = Quaternion.Slerp(a, targetRotation, i);
+
+            i += Time.deltaTime * 2.0f;
+            yield return null;
+        }
+
+        transform.rotation = targetRotation;
     }
 
     private void FixedUpdate()
