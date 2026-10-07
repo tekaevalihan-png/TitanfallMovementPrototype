@@ -18,7 +18,7 @@ public class Player : MonoBehaviour
     private Vector2 _dir;
     private Vector3 _normalOfWall;
     private float _yaw, _pitch;
-    private bool _isGrounded, _wallRun, _wallRight;
+    [SerializeField] private bool _isGrounded, _wallRun, _wallRight;
     private Rigidbody _rb;
 
     private void Start()
@@ -37,7 +37,7 @@ public class Player : MonoBehaviour
         _pitch -= mouse.y * _mouseSensitivity * 0.1f;
         _pitch = Mathf.Clamp(_pitch, -80f, 80f);
 
-        if(!_wallRun) _rb.MoveRotation(Quaternion.Euler(0, _yaw, 0));
+        _rb.MoveRotation(Quaternion.Euler(0, _yaw, 0));
         _camera.transform.localRotation = Quaternion.Euler(_pitch, 0, 0);
     }
 
@@ -70,7 +70,6 @@ public class Player : MonoBehaviour
             {
                 _normalOfWall = hit.normal;
                 _wallRight = false;
-
                 if (_rb.linearVelocity.sqrMagnitude > 1f) _wallRun = true;
             }
         }
@@ -87,7 +86,7 @@ public class Player : MonoBehaviour
             _rb.AddForce(-_normalOfWall * 25);
     }
 
-    private void OnCollisionEnter(Collision collision)
+        private void OnCollisionEnter(Collision collision)
     {
         if(collision.gameObject.CompareTag("Wall") && _wallRun)
         {
@@ -112,7 +111,7 @@ public class Player : MonoBehaviour
 
     private void OnCollisionExit(Collision collision)
     {
-        if (collision.gameObject.CompareTag("Wall") && _wallRun)
+        if (collision.gameObject.CompareTag("Wall"))
         {
             _rb.useGravity = true;
             _wallRun = false;
@@ -137,13 +136,13 @@ public class Player : MonoBehaviour
 
         while (i < 1f)
         {
-            transform.rotation = Quaternion.Slerp(a, targetRotation, i);
+            _rb.MoveRotation(Quaternion.Slerp(a, targetRotation, i));
 
             i += Time.deltaTime * 2.0f;
             yield return null;
         }
 
-        transform.rotation = targetRotation;
+        _rb.MoveRotation(targetRotation);
     }
 
     private void FixedUpdate()
