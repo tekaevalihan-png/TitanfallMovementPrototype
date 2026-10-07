@@ -37,7 +37,7 @@ public class Player : MonoBehaviour
         _pitch -= mouse.y * _mouseSensitivity * 0.1f;
         _pitch = Mathf.Clamp(_pitch, -80f, 80f);
 
-        _rb.MoveRotation(Quaternion.Euler(0, _yaw, 0));
+        if(!_wallRun) _rb.MoveRotation(Quaternion.Euler(0, _yaw, 0));
         _camera.transform.localRotation = Quaternion.Euler(_pitch, 0, 0);
     }
 
