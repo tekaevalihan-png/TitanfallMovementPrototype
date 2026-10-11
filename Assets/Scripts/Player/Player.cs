@@ -1,4 +1,5 @@
 using System.Collections;
+using UnityEditor.Rendering.Utilities;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -18,7 +19,7 @@ public class Player : MonoBehaviour
     private Vector2 _dir;
     private Vector3 _normalOfWall;
     private float _yaw, _pitch;
-    [SerializeField] private bool _isGrounded, _wallRun, _wallRight;
+    private bool _isGrounded, _wallRun, _wallRight;
     private Rigidbody _rb;
 
     private void Start()
@@ -37,9 +38,43 @@ public class Player : MonoBehaviour
         _pitch -= mouse.y * _mouseSensitivity * 0.1f;
         _pitch = Mathf.Clamp(_pitch, -80f, 80f);
 
-        _rb.MoveRotation(Quaternion.Euler(0, _yaw, 0));
+        _rb.MoveRotation(Quaternion.Euler(transform.rotation.eulerAngles.x, _yaw, transform.rotation.eulerAngles.z));
         _camera.transform.localRotation = Quaternion.Euler(_pitch, 0, 0);
     }
+
+    public void OnSlide(InputAction.CallbackContext context)
+    {
+        if (context.performed && _isGrounded)
+        {
+            StartCoroutine(SlideRoutine());
+        }
+    }
+
+    private IEnumerator SlideRoutine()
+    {
+        yield return StartCoroutine(SmoothRotate(Quaternion.Euler(new Vector3(
+            -50f,
+            transform.rotation.eulerAngles.y,
+            transform.rotation.eulerAngles.z
+        ))));
+
+      
+        Vector3 slideDirection = transform.forward;
+        slideDirection.y = 0f;
+        slideDirection = slideDirection.normalized;
+
+        _rb.AddForce(slideDirection * 10f, ForceMode.Impulse);
+
+    
+        yield return new WaitForSeconds(0.6f);
+
+        yield return StartCoroutine(SmoothRotate(Quaternion.Euler(new Vector3(
+            0f,
+            transform.rotation.eulerAngles.y,
+            transform.rotation.eulerAngles.z
+        ))));
+    }
+
 
     public void OnJump(InputAction.CallbackContext context)
     {
@@ -86,25 +121,25 @@ public class Player : MonoBehaviour
             _rb.AddForce(-_normalOfWall * 25);
     }
 
-        private void OnCollisionEnter(Collision collision)
+    private void OnCollisionEnter(Collision collision)
     {
-        if(collision.gameObject.CompareTag("Wall") && _wallRun)
+        if (collision.gameObject.CompareTag("Wall") && _wallRun)
         {
             _rb.useGravity = false;
 
             if (_wallRight)
             {
-                float i = 0f;
                 Quaternion a = transform.rotation;
-
-                StartCoroutine(SmoothRotateToZ(15f));
+                StartCoroutine(SmoothRotate(Quaternion.Euler(
+                    new Vector3(transform.rotation.eulerAngles.x,
+                    transform.rotation.eulerAngles.y, 15f))));
             }
             else
             {
-                float i = 0f;
                 Quaternion a = transform.rotation;
-
-                StartCoroutine(SmoothRotateToZ(-15f));
+                StartCoroutine(SmoothRotate(Quaternion.Euler(
+                    new Vector3(transform.rotation.eulerAngles.x,
+                    transform.rotation.eulerAngles.y, -15f))));
             }
         }
     }
@@ -116,33 +151,28 @@ public class Player : MonoBehaviour
             _rb.useGravity = true;
             _wallRun = false;
 
-            StartCoroutine(SmoothRotateToZ(0f));
+            StartCoroutine(SmoothRotate(
+                Quaternion.Euler(new Vector3(transform.rotation.eulerAngles.x,
+                transform.rotation.eulerAngles.y, 0))));
         }
 
         if (collision.gameObject.CompareTag(_groundTag)) _isGrounded = false;
     }
 
-    private IEnumerator SmoothRotateToZ(float z)
+    private IEnumerator SmoothRotate(Quaternion dir)
     {
         float i = 0f;
-
-        Quaternion targetRotation = Quaternion.Euler(
-            transform.rotation.eulerAngles.x,
-            transform.rotation.eulerAngles.y,
-            z
-        );
-
         Quaternion a = transform.rotation;
 
         while (i < 1f)
         {
-            _rb.MoveRotation(Quaternion.Slerp(a, targetRotation, i));
+            _rb.MoveRotation(Quaternion.Slerp(a, dir, i));
 
             i += Time.deltaTime * 2.0f;
             yield return null;
         }
 
-        _rb.MoveRotation(targetRotation);
+        _rb.MoveRotation(dir);
     }
 
     private void FixedUpdate()
