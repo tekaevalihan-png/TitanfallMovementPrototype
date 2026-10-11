@@ -15,12 +15,12 @@ Trying to recreate Cooper's movement from Titanfall 2 in Unity.
 * Wallrun
 * Running, jumping
 * Inertia in air
+* Slide
 * Camera rotation
 
 ## Plan
 
 1. Wall jump
-2. Slide
 
 ## Stack
 
